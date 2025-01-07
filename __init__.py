@@ -62,7 +62,7 @@ class PortfolioSummaryInstance:  # pragma: no cover
         self.irr_cache = irr_cache
         self.dividend_cache = dividend_cache
         self.operating_currency = self.ledger.options["operating_currency"][0]
-        self.irr = IRR(self.ledger.all_entries, g.ledger.price_map, self.operating_currency, errors=self.ledger.errors)
+        self.irr = IRR(self.ledger.all_entries, g.ledger.prices, self.operating_currency, errors=self.ledger.errors)
         self.all_mwr_accounts = set()
         self.dividends_elapsed = 0
         self.total = {
@@ -263,10 +263,10 @@ class PortfolioSummaryInstance:  # pragma: no cover
         row['pnl'] = ZERO
         row['dividends'] = ZERO
         date = g.filtered.end_date
-        balance = cost_or_value(node.balance, "at_value", g.ledger.price_map, date=date)
-        cost = cost_or_value(node.balance, "at_cost", g.ledger.price_map, date=date)
+        balance = cost_or_value(node.balance, "at_value", g.ledger.prices, date=date)
+        cost = cost_or_value(node.balance, "at_cost", g.ledger.prices, date=date)
         #### ADD Units to the report
-        units = cost_or_value(node.balance, "units", g.ledger.price_map, date=date)
+        units = cost_or_value(node.balance, "units", g.ledger.prices, date=date)
         ### Get row currency
         row_currency = None
         if len(list(units.values())) > 0:

@@ -1,5 +1,15 @@
-{% import 'macros/_account_macros.html' as account_macros %}
 {% import 'macros/_commodity_macros.html' as commodity_macros %}
+
+{% macro account_name(ledger, account_name, last_segment=False) -%}
+<a href="{{ url_for('account', name=account_name) }}" class="account">
+  {{- account_name.split(':')[-1] if last_segment else account_name -}}
+</a>
+{%- if ledger.accounts[account_name].uptodate_status %}
+
+{{ indicator(ledger, account_name) }}
+{{ last_account_activity(ledger, account_name) }}
+{% endif %}
+{% endmacro %}
 
 <style>
   .tree-table .num.PnL.positive {
@@ -38,7 +48,7 @@
       <li{{ ' class=toggled' if loop.depth0 == 1 else '' }}>
         <p>
           <span class="account-cell depth-{{ loop.depth0 }} droptarget{{ ' has-children' if row.children else '' }}" data-account-name="{{ row.account }}">
-            {{ account_macros.account_name(ledger, row.account, last_segment=(loop.depth0 > 1)) }}
+            {{ account_name(ledger, row.account, last_segment=(loop.depth0 > 1)) }}
           </span>
           {% for name, type in types %}
           {% if name != "account" %}

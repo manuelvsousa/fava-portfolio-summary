@@ -30,6 +30,8 @@ import beancount.core.data
 import beancount.core.convert
 import beancount.parser
 from fava.helpers import BeancountError
+import fava.core.conversion
+import fava.core.inventory
 
 # https://github.com/peliot/XIRR-and-XNPV/blob/master/financial.py
 try:
@@ -116,7 +118,7 @@ def xtwrr(periods, debug=False):
         partial = 1.0
         # cashflow occurs on end date, so remove it from the current balance
         if last != 0:
-            partial = 1 + ((cur_bal - cashflow) - last) / last
+            partial = 1 + (max(cur_bal - cashflow, 0.0) - last) / last
         if debug:
             print(f"{date.strftime('%Y-%m-%d')}  {last:-15.2f}  {cashflow:-11.2f}  {cur_bal:-14.2f}  {partial:-10.2f}")
         mean *= partial
@@ -202,14 +204,14 @@ class IRR:
         """Get balance for a list of postings at a specified date"""
         inventory = self.get_inventory_as_of_date(date, postings)
         #balance = inventory.reduce(beancount.core.convert.convert_position, self.currency, self.price_map, date)
-        balance = beancount.core.inventory.Inventory()
+        balance = fava.core.inventory.CounterInventory()
         if date not in self.market_value:
             self.market_value[date] = {}
         date_cache = self.market_value[date]
         for position in inventory:
             value = date_cache.get(position)
             if not value:
-                value = beancount.core.convert.convert_position(position, self.currency, self.price_map, date)
+                value = fava.core.conversion.convert_position(position, self.currency, self.price_map, date)
                 if value.currency != self.currency:
                     # try to convert position via cost
                     if position.cost and position.cost.currency == self.currency:
@@ -219,8 +221,8 @@ class IRR:
                         continue
                 date_cache[position] = value
             balance.add_amount(value)
-        amount = balance.get_currency_units(self.currency)
-        return amount.number
+        amount = fava.core.conversion.units(balance)
+        return amount.get(self.currency, Decimal('0.00'))
 
     def is_interesting_posting(self, posting):
         """ Is this posting for an account we care about? """
@@ -307,7 +309,7 @@ class IRR:
                 # accurately represent the cost at transaction time (due to intra-day variations).  That
                 # could cause inacuracy, but since the cashflow is applied to the daily balance, it is more
                 # important to be consistent with values
-                converted = beancount.core.convert.convert_position(
+                converted = fava.core.conversion.convert_position(
                     posting, self.currency, self.price_map, entry.date)
                 if converted.currency != self.currency:
                     # If the price_map does not contain a valid price, see if it can be calculated from cost
@@ -367,6 +369,9 @@ class IRR:
             if cashflows:
                 # we need to coerce everything to a float for xirr to work...
                 irr = xirr([(d, float(f)) for (d,f) in cashflows])
+                if isinstance(irr, complex):
+                    logging.error(f'IRR has complex component for the time period {start_date} -> {end_date}')
+                    irr = None
             else:
                 logging.error(f'No cashflows found during the time period {start_date} -> {end_date}')
         elapsed[6] = time.time()
