@@ -243,7 +243,7 @@ class PortfolioSummaryInstance:  # pragma: no cover
         if g.filtered.end_date:
             query += f" AND date < {g.filtered.end_date}"
         start = time.time()
-        result = self.ledger.query_shell.execute_query(query)
+        result = self.ledger.execute_query_serialised(entries = self.ledger.all_entries, query = query).rows
         self.dividends_elapsed += time.time() - start
         dividends = ZERO
         if len(result[2])>0:
@@ -289,12 +289,12 @@ class PortfolioSummaryInstance:  # pragma: no cover
             total_currency_cost = ZERO
             total_currency_value = ZERO
 
-            result = self.ledger.query_shell.execute_query(
+            result = self.ledger.query_shell.execute_query_serialised(entries = self.ledger.all_entries, query =
                 "SELECT "
                 f"convert(cost(position),'{self.operating_currency}',cost_date) AS cost, "
                 f"convert(value(position) ,'{self.operating_currency}',today()) AS value "
                 f"WHERE currency = '{row_currency}' AND account ='{node.name}' "
-                "ORDER BY currency, cost_date")
+                "ORDER BY currency, cost_date").rows
             if len(result) == 3:
                 for row_cost,row_value in result[2]:
                     total_currency_cost+=row_cost.number
